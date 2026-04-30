@@ -30,7 +30,7 @@ body {
     height: 100%;
     /* Placeholder for the poppy field image - using a gradient approximation for now */
     background: linear-gradient(to bottom, #87CEEB 0%, #87CEEB 40%, #ff6b6b 60%, #4CAF50 100%);
-    background-image: url('images/bg.png');
+    background-image: url('images/bg.jpg');
     background-size: cover;
     background-position: center;
     z-index: -1;
